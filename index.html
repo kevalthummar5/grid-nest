@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GridNest — Sub-Grid Drawing Tool | Grid Inside Grid for Artists</title>
+<meta name="description" content="Free online drawing grid tool with sub-grid support. Add grids inside grids on reference photos. Pencil sketch outline converter. Perfect for artists.">
+<meta name="keywords" content="grid inside grid, sub grid drawing, nested grid, grid maker, sketchify, photo to outline, pencil sketch, drawing grid tool, artist grid generator">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0c10;--sf:#16161e;--sf2:#1e1e2a;--sf3:#282838;
+  --bd:#2a2a3a;--tx:#e4e4ee;--tx2:#8888a0;
+  --ac:#f59e0b;--ac2:#fbbf24;--acd:rgba(245,158,11,.12);
+  --dg:#ef4444;--ok:#22c55e;--r:10px;
+  --font:'DM Sans',system-ui,sans-serif;--mono:'Courier New',monospace;
+}
+html,body{font-family:var(--font);background:var(--bg);color:var(--tx);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* HEADER */
+.hdr{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bd);background:var(--sf);position:sticky;top:0;z-index:100}
+.logo{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--ac)}
+.logo small{color:var(--tx2);font-weight:400;font-size:11px;margin-left:6px}
+.hdr-btns{display:flex;gap:6px}
+
+/* BUTTONS */
+.btn{font-family:var(--font);font-size:12px;font-weight:600;padding:7px 14px;border:none;border-radius:8px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn-p{background:var(--ac);color:#000}.btn-p:hover{background:var(--ac2)}
+.btn-s{background:var(--sf2);color:var(--tx);border:1px solid var(--bd)}.btn-s:hover{background:var(--sf3)}
+.btn-d{background:rgba(239,68,68,.12);color:var(--dg);border:1px solid rgba(239,68,68,.25)}.btn-d:hover{background:rgba(239,68,68,.2)}
+.btn-sm{padding:5px 10px;font-size:11px}
+
+/* LAYOUT */
+.app{display:flex;height:calc(100vh - 49px)}
+.side{width:290px;min-width:290px;background:var(--sf);border-right:1px solid var(--bd);overflow-y:auto;padding-bottom:40px}
+.main{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;background:var(--bg)}
+
+/* PANELS */
+.pnl{border-bottom:1px solid var(--bd);padding:14px}
+.pnl-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--tx2);margin-bottom:12px}
+.fld{margin-bottom:10px}
+.fld label{display:block;font-size:11px;color:var(--tx2);margin-bottom:4px;font-weight:500}
+.fld input[type="number"],.fld input[type="text"],.fld select{width:100%;background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:7px 9px;border-radius:7px;font-family:var(--font);font-size:12px;outline:none}
+.fld input:focus,.fld select:focus{border-color:var(--ac)}
+.fld input[type="color"]{width:100%;height:32px;background:var(--sf2);border:1px solid var(--bd);border-radius:7px;cursor:pointer;padding:2px}
+.fld input[type="range"]{width:100%;accent-color:var(--ac)}
+.fr{display:flex;gap:6px}.fr .fld{flex:1}
+
+/* TOGGLE */
+.tgl-r{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+.tgl-r span{font-size:12px;font-weight:500}
+.tgl{position:relative;width:38px;height:22px;cursor:pointer;flex-shrink:0}
+.tgl input{opacity:0;width:0;height:0}
+.tgl-s{position:absolute;inset:0;background:var(--sf3);border-radius:11px;transition:.25s}
+.tgl-s::before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:var(--tx2);border-radius:50%;transition:.25s}
+.tgl input:checked+.tgl-s{background:var(--ac)}
+.tgl input:checked+.tgl-s::before{transform:translateX(16px);background:#000}
+
+/* UPLOAD */
+.upl{border:2px dashed var(--bd);border-radius:var(--r);padding:28px 16px;text-align:center;cursor:pointer;transition:all .2s;background:var(--sf2)}
+.upl:hover,.upl.dov{border-color:var(--ac);background:var(--acd)}
+.upl .ic{font-size:32px;margin-bottom:6px}
+.upl p{font-size:12px;color:var(--tx2);margin-top:4px}
+
+/* CANVAS */
+.cw{position:relative;display:inline-block}
+.cw canvas{display:block;image-rendering:auto}
+
+/* SUBGRID */
+.sg-info{background:var(--acd);border:1px solid rgba(245,158,11,.25);border-radius:7px;padding:9px;font-size:11px;color:var(--ac);margin-bottom:10px;line-height:1.5}
+.sg-list{margin-top:8px}
+.sg-item{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;background:var(--sf2);border-radius:7px;margin-bottom:5px;font-size:11px;border:1px solid var(--bd)}
+.sg-item .lb{font-family:var(--mono);font-size:10px}
+.sg-item .dt{color:var(--tx2);font-size:10px}
+.sg-item button{background:none;border:none;color:var(--dg);cursor:pointer;font-size:13px;padding:2px 4px}
+
+/* ZOOM */
+.zc{position:absolute;bottom:16px;right:16px;display:flex;flex-direction:column;gap:3px;z-index:50}
+.zc button{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:7px;font-size:16px;font-weight:700;background:var(--sf);border:1px solid var(--bd);color:var(--tx);cursor:pointer}
+.zc button:hover{background:var(--sf2)}
+.zc .zl{text-align:center;font-size:9px;color:var(--tx2);font-family:var(--mono)}
+
+/* STATUS */
+.sbar{position:fixed;bottom:0;left:0;right:0;background:var(--sf);border-top:1px solid var(--bd);padding:6px 16px;display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--tx2);z-index:100}
+.badge{background:var(--acd);color:var(--ac);padding:2px 7px;border-radius:4px;font-weight:700;font-family:var(--mono);font-size:9px}
+
+/* EMPTY */
+.empty{text-align:center;padding:40px 20px;color:var(--tx2)}
+.empty .ic{font-size:44px;margin-bottom:10px;opacity:.4}
+.empty h3{font-size:15px;color:var(--tx);margin-bottom:6px}
+.empty p{font-size:12px;line-height:1.5}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-bg.on{display:flex}
+.modal{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:20px;width:100%;max-width:380px}
+.modal h3{font-size:15px;margin-bottom:14px}
+.modal-acts{display:flex;gap:8px;margin-top:16px}
+.modal-acts .btn{flex:1;justify-content:center}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--sf3);border-radius:3px}
+
+/* SEO */
+.seo{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+/* MOBILE */
+@media(max-width:768px){
+  .app{flex-direction:column-reverse;height:calc(100vh - 49px)}
+  .side{width:100%;min-width:100%;max-height:45vh;border-right:none;border-top:1px solid var(--bd)}
+  .side.hide{max-height:0;overflow:hidden;padding:0;border:none}
+  .main{min-height:40vh}
+  .mob-btn{display:flex!important}
+}
+.mob-btn{display:none;position:fixed;bottom:36px;right:14px;z-index:200;width:44px;height:44px;border-radius:50%;background:var(--ac);color:#000;border:none;font-size:20px;cursor:pointer;box-shadow:0 4px 16px rgba(245,158,11,.35);align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="logo">GridNest<small>Sub-Grid Tool</small></div>
+  <div class="hdr-btns">
+    <button class="btn btn-s" onclick="$('fi').click()">📁 Upload</button>
+    <button class="btn btn-p" id="dlBtn">⬇ Download</button>
+  </div>
+</header>
+
+<div class="app">
+<aside class="side" id="side">
+
+  <!-- UPLOAD -->
+  <div class="pnl">
+    <div class="pnl-t">🖼 Image</div>
+    <div class="upl" id="upl">
+      <div class="ic">📂</div>
+      <div><strong>Drop image here</strong></div>
+      <p>or click to browse</p>
+    </div>
+    <input type="file" id="fi" accept="image/*" hidden>
+  </div>
+
+  <!-- GRID -->
+  <div class="pnl">
+    <div class="pnl-t">⊞ Grid (Square Cells)</div>
+    <div class="fld">
+      <label>Grid Size (number of columns)</label>
+      <input type="number" id="gSize" value="8" min="2" max="80">
+    </div>
+    <div class="fr">
+      <div class="fld">
+        <label>Line Width (px)</label>
+        <input type="number" id="gLw" value="1" min="0.5" max="8" step="0.5">
+      </div>
+      <div class="fld">
+        <label>Color</label>
+        <input type="color" id="gClr" value="#ffffff">
+      </div>
+    </div>
+    <div class="fld">
+      <label>Opacity</label>
+      <input type="range" id="gOp" min="0.1" max="1" step="0.05" value="0.8">
+    </div>
+    <div class="tgl-r">
+      <span>Show Labels</span>
+      <label class="tgl"><input type="checkbox" id="gLbl" checked><span class="tgl-s"></span></label>
+    </div>
+  </div>
+
+  <!-- EFFECTS -->
+  <div class="pnl">
+    <div class="pnl-t">🎨 Effects</div>
+    <div class="tgl-r">
+      <span>Black & White</span>
+      <label class="tgl"><input type="checkbox" id="bwT"><span class="tgl-s"></span></label>
+    </div>
+    <div class="tgl-r">
+      <span>Pencil Sketch Outline</span>
+      <label class="tgl"><input type="checkbox" id="olT"><span class="tgl-s"></span></label>
+    </div>
+    <div id="olCtrl" style="display:none;margin-top:8px">
+      <div class="fld">
+        <label>Line Darkness</label>
+        <input type="range" id="olDark" min="0.5" max="3" step="0.1" value="1.5">
+      </div>
+      <div class="fld">
+        <label>Detail Level</label>
+        <input type="range" id="olDetail" min="1" max="5" step="1" value="2">
+      </div>
+      <div class="tgl-r">
+        <span>Invert (dark lines on white)</span>
+        <label class="tgl"><input type="checkbox" id="olInv" checked><span class="tgl-s"></span></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-GRID -->
+  <div class="pnl">
+    <div class="pnl-t">🔲 Sub-Grid (Grid Inside Grid)</div>
+    <div class="sg-info">
+      <strong>How to use:</strong><br>
+      1. Turn ON selection mode<br>
+      2. Click & drag on the grid to select cells<br>
+      3. Set sub-grid columns and click Add
+    </div>
+    <div class="tgl-r">
+      <span>🎯 Selection Mode</span>
+      <label class="tgl"><input type="checkbox" id="selMode"><span class="tgl-s"></span></label>
+    </div>
+    <div id="sgCtrl" style="display:none;margin-top:10px">
+      <div class="fld">
+        <label>Selected Area</label>
+        <input type="text" id="selArea" readonly placeholder="Click & drag on grid...">
+      </div>
+      <div class="fr">
+        <div class="fld">
+          <label>Sub Columns</label>
+          <input type="number" id="subC" value="3" min="2" max="20">
+        </div>
+        <div class="fld">
+          <label>Sub Rows</label>
+          <input type="number" id="subR" value="3" min="2" max="20">
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fld">
+          <label>Line Width</label>
+          <input type="number" id="subLw" value="0.5" min="0.25" max="4" step="0.25">
+        </div>
+        <div class="fld">
+          <label>Color</label>
+          <input type="color" id="subClr" value="#00ff00">
+        </div>
+      </div>
+      <button class="btn btn-p" id="addSg" style="width:100%;justify-content:center;margin-top:6px">＋ Add Sub-Grid</button>
+    </div>
+    <div id="sgList" class="sg-list"></div>
+  </div>
+
+  <div class="pnl">
+    <button class="btn btn-d" id="clrAll" style="width:100%;justify-content:center">🗑 Clear All</button>
+  </div>
+</aside>
+
+<main class="main" id="mainArea">
+  <div class="empty" id="empty">
+    <div class="ic">🎨</div>
+    <h3>Upload a reference image</h3>
+    <p>Add your drawing reference to start.<br>Then add grids and sub-grids.</p>
+  </div>
+  <div class="cw" id="cw" style="display:none">
+    <canvas id="cv"></canvas>
+  </div>
+  <div class="zc" id="zc" style="display:none">
+    <button id="zIn">+</button>
+    <div class="zl" id="zLbl">100%</div>
+    <button id="zOut">−</button>
+    <button id="zFit" style="font-size:11px;margin-top:3px">⊡</button>
+  </div>
+</main>
+</div>
+
+<div class="sbar">
+  <div id="stL">No image loaded</div>
+  <div><span class="badge" id="modeBdg">VIEW</span></div>
+</div>
+
+<button class="mob-btn" id="mobBtn">⚙</button>
+
+<!-- DOWNLOAD MODAL -->
+<div class="modal-bg" id="dlModal">
+  <div class="modal">
+    <h3>⬇ Download Image</h3>
+    <div class="fld">
+      <label>Format</label>
+      <select id="dlFmt">
+        <option value="png">PNG (best quality)</option>
+        <option value="jpeg">JPEG (smaller)</option>
+      </select>
+    </div>
+    <div class="tgl-r"><span>Include Grid</span><label class="tgl"><input type="checkbox" id="dlG" checked><span class="tgl-s"></span></label></div>
+    <div class="tgl-r"><span>Include Sub-Grids</span><label class="tgl"><input type="checkbox" id="dlSg" checked><span class="tgl-s"></span></label></div>
+    <div class="tgl-r"><span>Include Labels</span><label class="tgl"><input type="checkbox" id="dlLb" checked><span class="tgl-s"></span></label></div>
+    <div class="modal-acts">
+      <button class="btn btn-s" id="dlNo">Cancel</button>
+      <button class="btn btn-p" id="dlYes">⬇ Download</button>
+    </div>
+  </div>
+</div>
+
+<!-- SEO -->
+<div class="seo" aria-hidden="false">
+  <h1>GridNest — Free Online Sub-Grid Drawing Tool for Artists</h1>
+  <h2>Grid Inside Grid — Nested Grid Drawing Reference Tool</h2>
+  <p>GridNest lets artists add grids and sub-grids (grids inside grids) on reference photos. Upload your reference, add a main grid, then select cells to add nested sub-grids for detailed areas. Features pencil sketch outline conversion, black and white mode, and high-quality download.</p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ── STATE ──
+let S = {
+  img: null, zoom: 1,
+  bw: false, outline: false,
+  selMode: false, dragging: false,
+  selStart: null, selEnd: null, selCurrent: null,
+  subgrids: [],
+};
+
+const cv = $('cv'), cx = cv.getContext('2d');
+let processed = null; // offscreen processed image
+
+// ── HELPERS ──
+function getGridDims() {
+  const cols = Math.max(2, parseInt($('gSize').value) || 8);
+  if (!S.img) return { cols, rows: cols };
+  const w = S.img.naturalWidth, h = S.img.naturalHeight;
+  const cellSize = w / cols;
+  const rows = Math.max(1, Math.round(h / cellSize));
+  return { cols, rows, cellSize };
+}
+
+// ── UPLOAD ──
+$('upl').onclick = () => $('fi').click();
+$('upl').ondragover = e => { e.preventDefault(); $('upl').classList.add('dov'); };
+$('upl').ondragleave = () => $('upl').classList.remove('dov');
+$('upl').ondrop = e => { e.preventDefault(); $('upl').classList.remove('dov'); if(e.dataTransfer.files[0]) loadImg(e.dataTransfer.files[0]); };
+$('fi').onchange = e => { if(e.target.files[0]) loadImg(e.target.files[0]); };
+
+function loadImg(file) {
+  const r = new FileReader();
+  r.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      S.img = img;
+      S.subgrids = [];
+      S.selStart = S.selEnd = S.selCurrent = null;
+      processed = null;
+      renderSgList();
+      fitZoom();
+      $('empty').style.display = 'none';
+      $('cw').style.display = 'inline-block';
+      $('zc').style.display = 'flex';
+      $('stL').textContent = img.naturalWidth + ' × ' + img.naturalHeight + 'px';
+      render();
+    };
+    img.src = e.target.result;
+  };
+  r.readAsDataURL(file);
+}
+
+// ── ZOOM ──
+function fitZoom() {
+  const a = $('mainArea');
+  const z = Math.min((a.clientWidth - 20) / S.img.naturalWidth, (a.clientHeight - 20) / S.img.naturalHeight, 1);
+  S.zoom = z;
+  $('zLbl').textContent = Math.round(z * 100) + '%';
+}
+$('zIn').onclick = () => { S.zoom = Math.min(S.zoom * 1.25, 5); $('zLbl').textContent = Math.round(S.zoom*100)+'%'; render(); };
+$('zOut').onclick = () => { S.zoom = Math.max(S.zoom / 1.25, .05); $('zLbl').textContent = Math.round(S.zoom*100)+'%'; render(); };
+$('zFit').onclick = () => { fitZoom(); render(); };
+
+// ── PENCIL SKETCH EFFECT (high quality) ──
+function pencilSketch(srcCanvas) {
+  const w = srcCanvas.width, h = srcCanvas.height;
+  const src = srcCanvas.getContext('2d').getImageData(0, 0, w, h);
+  const d = src.data;
+  const darkness = parseFloat($('olDark').value);
+  const detail = parseInt($('olDetail').value);
+  const invert = $('olInv').checked;
+
+  // Step 1: Grayscale
+  const gray = new Float32Array(w * h);
+  for (let i = 0; i < gray.length; i++) {
+    gray[i] = d[i*4] * 0.299 + d[i*4+1] * 0.587 + d[i*4+2] * 0.114;
+  }
+
+  // Step 2: Gaussian blur (variable radius based on detail)
+  const blurRadius = [3, 5, 10, 18, 28][detail - 1];
+  const blurred = gaussianBlur(gray, w, h, blurRadius);
+
+  // Step 3: Dodge blend (gray / blurred * 256) — creates pencil look
+  const sketch = new Float32Array(w * h);
+  for (let i = 0; i < gray.length; i++) {
+    const b = blurred[i];
+    if (b < 1) {
+      sketch[i] = 255;
+    } else {
+      let val = gray[i] / b * 256;
+      // Apply darkness curve
+      val = 255 - (255 - val) * darkness;
+      sketch[i] = Math.max(0, Math.min(255, val));
+    }
+  }
+
+  // Step 4: Edge enhancement using Sobel for crisp lines
+  const edges = new Float32Array(w * h);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      const gx = -gray[i-w-1] - 2*gray[i-1] - gray[i+w-1] + gray[i-w+1] + 2*gray[i+1] + gray[i+w+1];
+      const gy = -gray[i-w-1] - 2*gray[i-w] - gray[i-w+1] + gray[i+w-1] + 2*gray[i+w] + gray[i+w+1];
+      edges[i] = Math.min(255, Math.sqrt(gx*gx + gy*gy) * darkness);
+    }
+  }
+
+  // Step 5: Combine sketch + edges
+  const out = new ImageData(w, h);
+  for (let i = 0; i < gray.length; i++) {
+    let v = sketch[i] - edges[i] * 0.6;
+    v = Math.max(0, Math.min(255, v));
+    if (invert) {
+      // dark lines on white background
+      out.data[i*4] = out.data[i*4+1] = out.data[i*4+2] = Math.round(v);
+    } else {
+      // white lines on dark background
+      out.data[i*4] = out.data[i*4+1] = out.data[i*4+2] = Math.round(255 - v);
+    }
+    out.data[i*4+3] = 255;
+  }
+
+  const oc = document.createElement('canvas');
+  oc.width = w; oc.height = h;
+  oc.getContext('2d').putImageData(out, 0, 0);
+  return oc;
+}
+
+function gaussianBlur(src, w, h, radius) {
+  // Box blur approximation (3 passes = good gaussian approx)
+  let buf1 = new Float32Array(src);
+  let buf2 = new Float32Array(w * h);
+
+  for (let pass = 0; pass < 3; pass++) {
+    // Horizontal
+    for (let y = 0; y < h; y++) {
+      let sum = 0, count = 0;
+      for (let x = 0; x < Math.min(radius, w); x++) { sum += buf1[y*w+x]; count++; }
+      for (let x = 0; x < w; x++) {
+        if (x + radius < w) { sum += buf1[y*w+x+radius]; count++; }
+        if (x - radius > 0) { sum -= buf1[y*w+x-radius-1]; count--; }
+        buf2[y*w+x] = sum / count;
+      }
+    }
+    // Vertical
+    for (let x = 0; x < w; x++) {
+      let sum = 0, count = 0;
+      for (let y = 0; y < Math.min(radius, h); y++) { sum += buf2[y*w+x]; count++; }
+      for (let y = 0; y < h; y++) {
+        if (y + radius < h) { sum += buf2[(y+radius)*w+x]; count++; }
+        if (y - radius > 0) { sum -= buf2[(y-radius-1)*w+x]; count--; }
+        buf1[y*w+x] = sum / count;
+      }
+    }
+  }
+  return buf1;
+}
+
+// ── PROCESS IMAGE ──
+function processImage() {
+  if (!S.img) return;
+  const w = S.img.naturalWidth, h = S.img.naturalHeight;
+  const oc = document.createElement('canvas');
+  oc.width = w; oc.height = h;
+  const octx = oc.getContext('2d');
+  octx.drawImage(S.img, 0, 0);
+
+  if (S.bw && !S.outline) {
+    const id = octx.getImageData(0, 0, w, h);
+    const d = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const g = d[i]*.299 + d[i+1]*.587 + d[i+2]*.114;
+      d[i] = d[i+1] = d[i+2] = g;
+    }
+    octx.putImageData(id, 0, 0);
+    processed = oc;
+  } else if (S.outline) {
+    processed = pencilSketch(oc);
+  } else {
+    processed = oc;
+  }
+}
+
+// ── RENDER ──
+function render(exp) {
+  if (!S.img) return;
+  const isExp = !!exp;
+  const natW = S.img.naturalWidth, natH = S.img.naturalHeight;
+  const { cols, rows } = getGridDims();
+
+  let tw, th, tc, tcanvas;
+  if (isExp) {
+    tcanvas = document.createElement('canvas');
+    tcanvas.width = natW; tcanvas.height = natH;
+    tc = tcanvas.getContext('2d');
+    tw = natW; th = natH;
+  } else {
+    tw = Math.round(natW * S.zoom);
+    th = Math.round(natH * S.zoom);
+    // Use device pixel ratio for HD rendering
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = tw * dpr;
+    cv.height = th * dpr;
+    cv.style.width = tw + 'px';
+    cv.style.height = th + 'px';
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    tc = cx;
+    tcanvas = cv;
+  }
+
+  // Draw processed image
+  processImage();
+  if (isExp) {
+    tc.drawImage(processed, 0, 0, tw, th);
+  } else {
+    tc.imageSmoothingEnabled = true;
+    tc.imageSmoothingQuality = 'high';
+    tc.drawImage(processed, 0, 0, tw, th);
+  }
+
+  const cellW = tw / cols;
+  const cellH = th / rows;
+  const lw = parseFloat($('gLw').value) || 1;
+  const color = $('gClr').value;
+  const opacity = parseFloat($('gOp').value);
+  const showLabels = $('gLbl').checked;
+  const doGrid = isExp ? exp.grid : true;
+  const doSub = isExp ? exp.sub : true;
+  const doLbl = isExp ? exp.lbl : showLabels;
+
+  // Scaling factor for export so lines look same thickness relative to image
+  const sf = isExp ? 1 : 1;
+
+  // ── MAIN GRID ──
+  if (doGrid) {
+    tc.save();
+    tc.globalAlpha = opacity;
+    tc.strokeStyle = color;
+    tc.lineWidth = lw;
+    // Use precise pixel-snapped lines
+    for (let c = 0; c <= cols; c++) {
+      const x = Math.round(c * cellW * 100) / 100;
+      tc.beginPath(); tc.moveTo(x, 0); tc.lineTo(x, th); tc.stroke();
+    }
+    for (let r = 0; r <= rows; r++) {
+      const y = Math.round(r * cellH * 100) / 100;
+      tc.beginPath(); tc.moveTo(0, y); tc.lineTo(tw, y); tc.stroke();
+    }
+    tc.restore();
+
+    // Labels
+    if (doLbl) {
+      tc.save();
+      tc.globalAlpha = opacity * 0.85;
+      // Font size: proportional to cell but capped so it never dominates
+      const rawFs = Math.min(cellW, cellH) * 0.18;
+      const fs = Math.max(8, Math.min(rawFs, 28));
+      tc.font = `600 ${fs}px "DM Sans",system-ui,sans-serif`;
+      tc.textAlign = 'center';
+      tc.textBaseline = 'middle';
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const lbl = String.fromCharCode(65 + (c % 26)) + (r + 1);
+          const x = c * cellW + cellW / 2;
+          const y = r * cellH + cellH / 2;
+          tc.fillStyle = 'rgba(0,0,0,0.5)';
+          tc.fillText(lbl, x + 1, y + 1);
+          tc.fillStyle = color;
+          tc.fillText(lbl, x, y);
+        }
+      }
+      tc.restore();
+    }
+  }
+
+  // ── SUB-GRIDS ──
+  if (doSub) {
+    S.subgrids.forEach(sg => {
+      const sx = sg.sc * cellW, sy = sg.sr * cellH;
+      const sw = (sg.ec - sg.sc + 1) * cellW, sh = (sg.er - sg.sr + 1) * cellH;
+      const scW = sw / sg.cols, scH = sh / sg.rows;
+
+      tc.save();
+      tc.globalAlpha = opacity;
+      // Tinted background
+      tc.fillStyle = sg.color + '15';
+      tc.fillRect(sx, sy, sw, sh);
+      // Border
+      tc.strokeStyle = sg.color;
+      tc.lineWidth = sg.lw * 2;
+      tc.strokeRect(sx, sy, sw, sh);
+      // Inner lines
+      tc.lineWidth = sg.lw;
+      for (let c = 1; c < sg.cols; c++) {
+        const x = sx + c * scW;
+        tc.beginPath(); tc.moveTo(x, sy); tc.lineTo(x, sy + sh); tc.stroke();
+      }
+      for (let r = 1; r < sg.rows; r++) {
+        const y = sy + r * scH;
+        tc.beginPath(); tc.moveTo(sx, y); tc.lineTo(sx + sw, y); tc.stroke();
+      }
+      tc.restore();
+    });
+  }
+
+  // ── SELECTION OVERLAY ──
+  if (!isExp && S.selMode && S.selStart) {
+    const end = S.selCurrent || S.selEnd || S.selStart;
+    const c1 = Math.min(S.selStart.col, end.col), c2 = Math.max(S.selStart.col, end.col);
+    const r1 = Math.min(S.selStart.row, end.row), r2 = Math.max(S.selStart.row, end.row);
+
+    tc.save();
+    tc.fillStyle = 'rgba(245,158,11,0.18)';
+    tc.strokeStyle = '#f59e0b';
+    tc.lineWidth = 2;
+    tc.setLineDash([5, 3]);
+    tc.fillRect(c1 * cellW, r1 * cellH, (c2 - c1 + 1) * cellW, (r2 - r1 + 1) * cellH);
+    tc.strokeRect(c1 * cellW, r1 * cellH, (c2 - c1 + 1) * cellW, (r2 - r1 + 1) * cellH);
+    tc.restore();
+  }
+
+  if (isExp) return tcanvas;
+}
+
+// ── CANVAS MOUSE / TOUCH for SUB-GRID SELECTION ──
+function getCellFromEvent(e) {
+  const rect = cv.getBoundingClientRect();
+  let cx, cy;
+  if (e.touches) {
+    cx = e.touches[0].clientX - rect.left;
+    cy = e.touches[0].clientY - rect.top;
+  } else {
+    cx = e.clientX - rect.left;
+    cy = e.clientY - rect.top;
+  }
+  const { cols, rows } = getGridDims();
+  const cellW = rect.width / cols;
+  const cellH = rect.height / rows;
+  const col = Math.floor(cx / cellW);
+  const row = Math.floor(cy / cellH);
+  if (col < 0 || col >= cols || row < 0 || row >= rows) return null;
+  return { col, row };
+}
+
+function updateSelLabel() {
+  if (!S.selStart) { $('selArea').value = ''; return; }
+  const end = S.selEnd || S.selCurrent || S.selStart;
+  const c1 = Math.min(S.selStart.col, end.col), c2 = Math.max(S.selStart.col, end.col);
+  const r1 = Math.min(S.selStart.row, end.row), r2 = Math.max(S.selStart.row, end.row);
+  $('selArea').value = `${String.fromCharCode(65+c1)}${r1+1} → ${String.fromCharCode(65+c2)}${r2+1}`;
+}
+
+// Mouse events
+cv.addEventListener('mousedown', e => {
+  if (!S.selMode || !S.img) return;
+  e.preventDefault();
+  const cell = getCellFromEvent(e);
+  if (!cell) return;
+  S.dragging = true;
+  S.selStart = cell;
+  S.selEnd = null;
+  S.selCurrent = cell;
+  updateSelLabel();
+  render();
+});
+
+cv.addEventListener('mousemove', e => {
+  if (!S.selMode || !S.img || !S.dragging) return;
+  e.preventDefault();
+  const cell = getCellFromEvent(e);
+  if (!cell) return;
+  S.selCurrent = cell;
+  updateSelLabel();
+  render();
+});
+
+cv.addEventListener('mouseup', e => {
+  if (!S.selMode || !S.img || !S.dragging) return;
+  e.preventDefault();
+  S.dragging = false;
+  const cell = getCellFromEvent(e);
+  if (cell) S.selEnd = cell;
+  else if (S.selCurrent) S.selEnd = S.selCurrent;
+  else S.selEnd = S.selStart;
+  S.selCurrent = null;
+  updateSelLabel();
+  render();
+});
+
+// Touch events
+cv.addEventListener('touchstart', e => {
+  if (!S.selMode || !S.img) return;
+  e.preventDefault();
+  const cell = getCellFromEvent(e);
+  if (!cell) return;
+  S.dragging = true;
+  S.selStart = cell;
+  S.selEnd = null;
+  S.selCurrent = cell;
+  updateSelLabel();
+  render();
+}, { passive: false });
+
+cv.addEventListener('touchmove', e => {
+  if (!S.selMode || !S.img || !S.dragging) return;
+  e.preventDefault();
+  const cell = getCellFromEvent(e);
+  if (!cell) return;
+  S.selCurrent = cell;
+  updateSelLabel();
+  render();
+}, { passive: false });
+
+cv.addEventListener('touchend', e => {
+  if (!S.selMode || !S.img || !S.dragging) return;
+  e.preventDefault();
+  S.dragging = false;
+  S.selEnd = S.selCurrent || S.selStart;
+  S.selCurrent = null;
+  updateSelLabel();
+  render();
+}, { passive: false });
+
+// ── ADD SUB-GRID ──
+$('addSg').onclick = () => {
+  if (!S.selStart || !S.selEnd) {
+    alert('Please click & drag on the grid to select an area first.');
+    return;
+  }
+  const c1 = Math.min(S.selStart.col, S.selEnd.col);
+  const c2 = Math.max(S.selStart.col, S.selEnd.col);
+  const r1 = Math.min(S.selStart.row, S.selEnd.row);
+  const r2 = Math.max(S.selStart.row, S.selEnd.row);
+
+  S.subgrids.push({
+    sc: c1, ec: c2, sr: r1, er: r2,
+    cols: parseInt($('subC').value) || 3,
+    rows: parseInt($('subR').value) || 3,
+    lw: parseFloat($('subLw').value) || 0.5,
+    color: $('subClr').value,
+    id: Date.now()
+  });
+  S.selStart = S.selEnd = S.selCurrent = null;
+  $('selArea').value = '';
+  renderSgList();
+  render();
+};
+
+function renderSgList() {
+  const el = $('sgList');
+  if (!S.subgrids.length) { el.innerHTML = ''; return; }
+  el.innerHTML = S.subgrids.map(sg => {
+    const area = `${String.fromCharCode(65+sg.sc)}${sg.sr+1}→${String.fromCharCode(65+sg.ec)}${sg.er+1}`;
+    return `<div class="sg-item">
+      <span class="lb" style="color:${sg.color}">■ ${area}</span>
+      <span class="dt">${sg.cols}×${sg.rows}</span>
+      <button onclick="rmSg(${sg.id})" title="Remove">✕</button>
+    </div>`;
+  }).join('');
+}
+window.rmSg = id => { S.subgrids = S.subgrids.filter(s => s.id !== id); renderSgList(); render(); };
+
+// ── CONTROL EVENTS ──
+['gSize','gLw','gOp'].forEach(id => $(id).oninput = () => render());
+$('gClr').oninput = () => render();
+$('gLbl').onchange = () => render();
+$('bwT').onchange = e => { S.bw = e.target.checked; processed = null; render(); };
+$('olT').onchange = e => {
+  S.outline = e.target.checked;
+  $('olCtrl').style.display = e.target.checked ? 'block' : 'none';
+  processed = null; render();
+};
+$('olDark').oninput = () => { processed = null; render(); };
+$('olDetail').oninput = () => { processed = null; render(); };
+$('olInv').onchange = () => { processed = null; render(); };
+
+$('selMode').onchange = e => {
+  S.selMode = e.target.checked;
+  $('sgCtrl').style.display = e.target.checked ? 'block' : 'none';
+  $('modeBdg').textContent = e.target.checked ? 'SELECT' : 'VIEW';
+  cv.style.cursor = e.target.checked ? 'crosshair' : 'default';
+  if (!e.target.checked) {
+    S.selStart = S.selEnd = S.selCurrent = null;
+    S.dragging = false;
+    render();
+  }
+};
+
+// ── DOWNLOAD ──
+$('dlBtn').onclick = () => {
+  if (!S.img) { alert('Upload an image first.'); return; }
+  $('dlModal').classList.add('on');
+};
+$('dlNo').onclick = () => $('dlModal').classList.remove('on');
+$('dlModal').onclick = e => { if (e.target === $('dlModal')) $('dlModal').classList.remove('on'); };
+
+$('dlYes').onclick = () => {
+  const fmt = $('dlFmt').value;
+  const expCanvas = render({ grid: $('dlG').checked, sub: $('dlSg').checked, lbl: $('dlLb').checked });
+  const mime = fmt === 'jpeg' ? 'image/jpeg' : 'image/png';
+  const url = expCanvas.toDataURL(mime, fmt === 'jpeg' ? 0.92 : undefined);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'gridnest_' + Date.now() + '.' + fmt;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  $('dlModal').classList.remove('on');
+  render(); // re-render display
+};
+
+// ── CLEAR ──
+$('clrAll').onclick = () => {
+  if (!confirm('Clear everything?')) return;
+  S.img = null; S.subgrids = []; S.selStart = S.selEnd = S.selCurrent = null;
+  processed = null;
+  cv.width = 0; cv.height = 0;
+  $('cw').style.display = 'none';
+  $('zc').style.display = 'none';
+  $('empty').style.display = 'block';
+  $('stL').textContent = 'No image loaded';
+  $('selArea').value = '';
+  $('bwT').checked = false; $('olT').checked = false; $('selMode').checked = false;
+  S.bw = false; S.outline = false; S.selMode = false;
+  $('olCtrl').style.display = 'none';
+  $('sgCtrl').style.display = 'none';
+  renderSgList();
+};
+
+// ── MOBILE ──
+$('mobBtn').onclick = () => {
+  $('side').classList.toggle('hide');
+  $('mobBtn').textContent = $('side').classList.contains('hide') ? '⚙' : '✕';
+};
+
+// ── KEYBOARD ──
+document.onkeydown = e => {
+  if (e.key === 'Escape') {
+    S.selStart = S.selEnd = S.selCurrent = null;
+    $('selArea').value = '';
+    $('dlModal').classList.remove('on');
+    render();
+  }
+};
+
+// ── RESIZE ──
+let rt;
+window.onresize = () => { clearTimeout(rt); rt = setTimeout(() => { if(S.img){ fitZoom(); render(); } }, 200); };
+</script>
+</body>
+</html>
